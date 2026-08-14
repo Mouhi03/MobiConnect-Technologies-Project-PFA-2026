@@ -1,0 +1,87 @@
+{
+  "name": "03 - Human checkpoint",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "resume-onboarding",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-webhook-resume",
+      "name": "Webhook reprise manuelle",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 260],
+      "webhookId": "resume-onboarding"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": { "status": "serveur_cree_manuel" },
+          "matchingColumns": ["domainName"]
+        }
+      },
+      "id": "node-update-resume",
+      "name": "Maj tracker apres action humaine",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [460, 260],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": { "item": [{ "mode": "everyMinute" }] },
+        "simple": false,
+        "filters": {
+          "sender": "REPLACE_WITH_SUREMDM_SENDER_ADDRESS"
+        }
+      },
+      "id": "node-email-trigger",
+      "name": "Boite mail technique (surveillance)",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 460],
+      "credentials": {
+        "gmailOAuth2": { "id": "2", "name": "Gmail account (technique)" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": { "status": "email_valide" },
+          "matchingColumns": ["workEmail"]
+        }
+      },
+      "id": "node-update-email",
+      "name": "Maj tracker: email valide",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [460, 460],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook reprise manuelle": {
+      "main": [[{ "node": "Maj tracker apres action humaine", "type": "main", "index": 0 }]]
+    },
+    "Boite mail technique (surveillance)": {
+      "main": [[{ "node": "Maj tracker: email valide", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

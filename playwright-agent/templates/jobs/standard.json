@@ -1,0 +1,8 @@
+{
+  "jobs": [
+    "Configure_WiFi_Client",
+    "Restrict_Unknown_Sources",
+    "Enable_Remote_Support",
+    "Send_Welcome_Message"
+  ]
+}

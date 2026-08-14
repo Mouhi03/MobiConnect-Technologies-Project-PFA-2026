@@ -1,0 +1,20 @@
+{
+  "name": "Client",
+  "children": [
+    { "name": "Siege", "children": [] },
+    {
+      "name": "Casablanca",
+      "children": [
+        { "name": "Commercial", "children": [] },
+        { "name": "Logistique", "children": [] }
+      ]
+    },
+    {
+      "name": "Rabat",
+      "children": [
+        { "name": "Commercial", "children": [] }
+      ]
+    },
+    { "name": "Terminaux test", "children": [] }
+  ]
+}

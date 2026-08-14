@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    "Install_App_Tracking",
+    "Configure_WiFi_Client",
+    "Apply_Kiosk_LivraisonApp",
+    "Enable_GPS_Tracking",
+    "Restrict_Unknown_Sources",
+    "Enable_Remote_Support"
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "name": "04 - Apply templates and report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] }
+      },
+      "id": "node-schedule-2",
+      "name": "Toutes les 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "filterByFormula": "=OR({status} = 'serveur_cree', {status} = 'serveur_cree_manuel')"
+      },
+      "id": "node-airtable-ready",
+      "name": "Recuperer clients prets pour templates",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:4000/apply-templates",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"secteur\": $json.secteur, \"clientConsoleUrl\": \"https://\" + $json.domainName + \".suremdm.io\", \"consoleUsername\": $json.workEmail, \"consolePassword\": $json.workEmail + \"-Init1!\" } }}",
+        "options": {}
+      },
+      "id": "node-call-templates",
+      "name": "Appeler l'agent: appliquer templates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "={{ $json.status === 'done' ? 'termine' : 'erreur_templates' }}"
+          },
+          "matchingColumns": ["domainName"]
+        }
+      },
+      "id": "node-update-final",
+      "name": "Maj tracker: statut final",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [980, 300],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "reportText",
+              "type": "string",
+              "value": "=Onboarding {{ $json.domainName }} : statut {{ $json.status }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-build-report",
+      "name": "Construire le rapport",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "REPLACE_WITH_TEAM_EMAIL",
+        "subject": "Rapport onboarding - {{ $json.domainName }}",
+        "message": "={{ $json.reportText }}",
+        "options": {}
+      },
+      "id": "node-send-report",
+      "name": "Envoyer rapport",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1500, 300],
+      "credentials": {
+        "gmailOAuth2": { "id": "2", "name": "Gmail account (technique)" }
+      }
+    }
+  ],
+  "connections": {
+    "Toutes les 5 minutes": {
+      "main": [[{ "node": "Recuperer clients prets pour templates", "type": "main", "index": 0 }]]
+    },
+    "Recuperer clients prets pour templates": {
+      "main": [[{ "node": "Appeler l'agent: appliquer templates", "type": "main", "index": 0 }]]
+    },
+    "Appeler l'agent: appliquer templates": {
+      "main": [[{ "node": "Maj tracker: statut final", "type": "main", "index": 0 }]]
+    },
+    "Maj tracker: statut final": {
+      "main": [[{ "node": "Construire le rapport", "type": "main", "index": 0 }]]
+    },
+    "Construire le rapport": {
+      "main": [[{ "node": "Envoyer rapport", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

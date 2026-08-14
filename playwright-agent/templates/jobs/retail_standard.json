@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    "Install_App_Chrome",
+    "Configure_WiFi_Client",
+    "Apply_Kiosk_SalesApp",
+    "Restrict_Unknown_Sources",
+    "Enable_Remote_Support",
+    "Send_Welcome_Message"
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "name": "01 - Intake form and tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Demande d'onboarding client SureMDM",
+        "formDescription": "Formulaire interne Mobiconnect",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "companyName", "requiredField": true },
+            { "fieldLabel": "firstName", "requiredField": true },
+            { "fieldLabel": "lastName", "requiredField": true },
+            { "fieldLabel": "workEmail", "requiredField": true },
+            { "fieldLabel": "phone", "requiredField": true },
+            { "fieldLabel": "country", "requiredField": true },
+            { "fieldLabel": "domainName", "requiredField": true },
+            {
+              "fieldLabel": "secteur",
+              "fieldType": "dropdown",
+              "fieldOptions": { "values": [
+                { "option": "retail_standard" },
+                { "option": "logistique_standard" },
+                { "option": "standard" }
+              ]},
+              "requiredField": true
+            }
+          ]
+        }
+      },
+      "id": "node-form-trigger",
+      "name": "Formulaire onboarding",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "onboarding-intake-form"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "status", "type": "string", "value": "nouveau" },
+            { "id": "2", "name": "createdAt", "type": "string", "value": "={{ $now.toISO() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-set-status",
+      "name": "Preparer l'enregistrement",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        }
+      },
+      "id": "node-airtable-create",
+      "name": "Creer ligne tracker",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [720, 300],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    }
+  ],
+  "connections": {
+    "Formulaire onboarding": {
+      "main": [[{ "node": "Preparer l'enregistrement", "type": "main", "index": 0 }]]
+    },
+    "Preparer l'enregistrement": {
+      "main": [[{ "node": "Creer ligne tracker", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

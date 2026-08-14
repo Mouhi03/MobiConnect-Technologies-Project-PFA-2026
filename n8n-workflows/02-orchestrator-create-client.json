@@ -1,0 +1,132 @@
+{
+  "name": "02 - Orchestrator create client",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] }
+      },
+      "id": "node-schedule",
+      "name": "Toutes les 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "filterByFormula": "={status} = 'nouveau'"
+      },
+      "id": "node-airtable-get",
+      "name": "Recuperer nouveaux onboardings",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:4000/create-client",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"companyName\": $json.companyName, \"firstName\": $json.firstName, \"lastName\": $json.lastName, \"workEmail\": $json.workEmail, \"password\": $json.workEmail + \"-Init1!\", \"domainName\": $json.domainName, \"country\": $json.country, \"phoneNumber\": $json.phone } }}",
+        "options": {}
+      },
+      "id": "node-call-agent",
+      "name": "Appeler l'agent Playwright",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "created",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if-created",
+      "name": "Serveur cree ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "serveur_cree",
+            "accountId": "={{ $json.domain }}"
+          },
+          "matchingColumns": ["domainName"]
+        }
+      },
+      "id": "node-update-success",
+      "name": "Maj tracker: succes",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1240, 200],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "value": "REPLACE_WITH_YOUR_BASE_ID", "mode": "id" },
+        "table": { "value": "Onboardings", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "={{ $json.status === 'needs_human' ? 'bloque_captcha' : 'erreur' }}",
+            "notes": "={{ $json.error || $json.reason || '' }}"
+          },
+          "matchingColumns": ["domainName"]
+        }
+      },
+      "id": "node-update-blocked",
+      "name": "Maj tracker: bloque ou erreur",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1240, 400],
+      "credentials": {
+        "airtableTokenApi": { "id": "1", "name": "Airtable account" }
+      }
+    }
+  ],
+  "connections": {
+    "Toutes les 5 minutes": {
+      "main": [[{ "node": "Recuperer nouveaux onboardings", "type": "main", "index": 0 }]]
+    },
+    "Recuperer nouveaux onboardings": {
+      "main": [[{ "node": "Appeler l'agent Playwright", "type": "main", "index": 0 }]]
+    },
+    "Appeler l'agent Playwright": {
+      "main": [[{ "node": "Serveur cree ?", "type": "main", "index": 0 }]]
+    },
+    "Serveur cree ?": {
+      "main": [
+        [{ "node": "Maj tracker: succes", "type": "main", "index": 0 }],
+        [{ "node": "Maj tracker: bloque ou erreur", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
