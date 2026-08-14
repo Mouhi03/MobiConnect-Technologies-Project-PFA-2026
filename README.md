@@ -1,112 +1,110 @@
 # Mobiconnect - Assistant d'onboarding SureMDM
 
-## 1. Structure du projet
+Ce projet automatise la création des nouveaux clients sur SureMDM Cloud : un formulaire recueille les infos, tout est suivi dans une base Airtable, et un petit robot (Playwright) va cliquer à notre place dans SureMDM Hub. n8n fait le lien entre tout ça.
+
+## 1. Comment le projet est organisé
 
 ```
 mobiconnect-onboarding/
-  playwright-agent/        <- petit serveur qui pilote un navigateur (Modules C, D, E)
+  playwright-agent/        <- le robot qui pilote le navigateur (Modules C, D, E)
     server.js
     lib/
-      browser.js            login SureMDM Hub
-      createClient.js        creation du client (Module C)
-      applyTemplates.js      creation des groupes/jobs (Module E)
+      browser.js            connexion à SureMDM Hub
+      createClient.js        création du client (Module C)
+      applyTemplates.js      création des groupes/jobs (Module E)
     templates/
       groups/*.json           arborescences de groupes par secteur (Module B)
       jobs/*.json              listes de jobs par secteur (Module B)
     .env.example
     package.json
-  n8n-workflows/            <- l'orchestration (Modules A, B, D, F)
+  n8n-workflows/            <- le chef d'orchestre (Modules A, B, D, F)
     01-intake-form-and-tracker.json
     02-orchestrator-create-client.json
     03-human-checkpoint.json
     04-apply-templates-and-report.json
 ```
 
-## 2. Installation (une seule fois)
+## 2. Installation (à faire une seule fois)
 
+D'abord, on vérifie que Node.js est bien installé :
 ```bash
-# a) verifier Node.js (18+)
 node -v
+```
 
-# b) installer n8n globalement
+Ensuite on installe n8n globalement sur la machine :
+```bash
 npm install -g n8n
+```
 
-# c) installer les dependances de l'agent Playwright
+Puis les dépendances du robot Playwright :
+```bash
 cd playwright-agent
 npm install
 npx playwright install chromium
-
-# d) creer votre fichier de config reel
-cp .env.example .env
-# puis ouvrez .env et remplissez SUREMDM_HUB_URL, SUREMDM_USERNAME, SUREMDM_PASSWORD
 ```
 
-## 3. Adapter les selecteurs (etape obligatoire, une fois)
+Et enfin, on crée le vrai fichier de configuration (celui avec les vrais identifiants, jamais partagé sur GitHub) :
+```bash
+cp .env.example .env
+```
+Ouvre `.env` et remplis `SUREMDM_HUB_URL`, `SUREMDM_USERNAME` et `SUREMDM_PASSWORD` avec tes vraies infos.
 
-Le code contient des selecteurs "placeholder" (`#username`, `[name="companyName"]`, etc.)
-parce que je n'ai pas acces a l'interface reelle de SureMDM Hub. Pour les remplacer :
+## 3. Adapter les sélecteurs (étape obligatoire, une seule fois)
 
-1. Mettez `HEADLESS=false` dans `.env`
-2. Lancez `npm start` dans `playwright-agent/`
-3. Testez avec `curl` (exemple plus bas) pour voir le vrai navigateur s'ouvrir
-4. Faites clic droit -> Inspecter sur chaque champ reel du formulaire SureMDM,
-   copiez son attribut `id` ou `name`, et remplacez dans `lib/browser.js`,
-   `lib/createClient.js` et `lib/applyTemplates.js`
-5. Remettez `HEADLESS=true` une fois que ca fonctionne
+Le code contient des sélecteurs "provisoires" (`#username`, `[name="companyName"]`, etc.) parce que je n'avais pas accès à l'interface réelle de SureMDM Hub en l'écrivant. Il faut les remplacer par les vrais avant que ça marche :
+
+1. Mets `HEADLESS=false` dans `.env` — comme ça tu vas voir le navigateur s'ouvrir en vrai, pas juste tourner en arrière-plan
+2. Lance `npm start` dans `playwright-agent/`
+3. Teste avec `curl` pour déclencher une action et regarder ce que fait le navigateur
+4. Sur chaque champ réel du formulaire SureMDM, fais clic droit -> Inspecter, récupère son `id` ou `name`, et remplace-le dans `lib/browser.js`, `lib/createClient.js` et `lib/applyTemplates.js`
+5. Une fois que tout marche, remets `HEADLESS=true`
 
 ## 4. Lancer le projet
 
-Ouvrez 2 terminaux dans VS Code.
+Ouvre 2 terminaux dans VS Code.
 
-**Terminal 1 - l'agent Playwright :**
+**Terminal 1 — le robot Playwright :**
 ```bash
 cd playwright-agent
 npm start
-# -> "Onboarding agent listening on http://localhost:4000"
 ```
+Tu devrais voir : `Onboarding agent listening on http://localhost:4000`
 
-Testez qu'il repond :
+Pour vérifier qu'il répond bien :
 ```bash
 curl http://localhost:4000/health
-# -> {"ok":true}
 ```
+Ça doit renvoyer `{"ok":true}`.
 
-**Terminal 2 - n8n :**
+**Terminal 2 — n8n :**
 ```bash
 n8n start
-# -> ouvre http://localhost:5678 dans votre navigateur
 ```
+Ça ouvre l'interface sur `http://localhost:5678`.
 
 ## 5. Importer les workflows dans n8n
 
-Dans l'interface n8n (http://localhost:5678) :
+Une fois dans l'interface n8n :
 
-1. Workflows -> Import from File -> choisissez `01-intake-form-and-tracker.json`
-2. Repetez pour les fichiers 02, 03 et 04
-3. Dans chaque workflow importe, ouvrez les noeuds **Airtable** et **Gmail** et
-   remplacez les identifiants (credentials) par les votres :
-   - Airtable : creez un Personal Access Token sur airtable.com, collez-le dans
-     la credential "Airtable account"
-   - Gmail : connectez votre compte via OAuth2 (bouton "Sign in with Google")
-4. Remplacez `REPLACE_WITH_YOUR_BASE_ID` par l'ID de votre base Airtable
-   (visible dans l'URL de votre base, commence par `app...`)
-5. Activez (toggle "Active") les workflows 02, 03 et 04. Le workflow 01
-   (formulaire) peut rester actif en permanence aussi.
+1. Workflows -> Import from File -> choisis `01-intake-form-and-tracker.json`
+2. Fais pareil pour les fichiers 02, 03 et 04
+3. Dans chaque workflow, ouvre les nœuds **Airtable** et **Gmail** et connecte tes propres identifiants :
+   - Airtable : crée un Personal Access Token sur airtable.com, colle-le dans la credential
+   - Gmail : connecte ton compte via le bouton "Sign in with Google"
+4. Remplace `REPLACE_WITH_YOUR_BASE_ID` par l'ID de ta base Airtable (tu le trouves dans l'URL de ta base, ça commence par `app...`)
+5. Active les workflows 02, 03 et 04 (le petit interrupteur "Active"). Le 01 (le formulaire) peut rester actif en permanence aussi.
 
 ## 6. Tester le flux complet
 
-1. Ouvrez l'URL du formulaire du workflow 01 (bouton "Test Workflow" ou "Production URL")
-2. Remplissez-le avec un client de test
-3. Verifiez que la ligne apparait dans Airtable avec `status = nouveau`
-4. Attendez (ou declenchez manuellement) le workflow 02 -> le statut doit
-   passer a `serveur_cree`, `bloque_captcha` ou `erreur`
-5. Si `bloque_captcha`, resolvez manuellement le captcha dans le navigateur,
-   puis appelez `http://localhost:5678/webhook/resume-onboarding` pour reprendre
-6. Le workflow 04 applique ensuite les templates et vous envoie un rapport par email
+1. Ouvre l'URL du formulaire du workflow 01
+2. Remplis-le avec un client fictif, pour voir
+3. Vérifie que la ligne apparaît bien dans Airtable avec le statut `nouveau`
+4. Le workflow 02 va se déclencher (automatiquement ou en manuel) et faire passer le statut à `serveur_cree`, `bloque_captcha` ou `erreur`
+5. Si ça tombe sur `bloque_captcha`, résous le CAPTCHA à la main dans le navigateur, puis appelle `http://localhost:5678/webhook/resume-onboarding` pour relancer la suite
+6. Le workflow 04 applique ensuite les templates et envoie un petit rapport par email
 
-## 7. Notes
+## 7. Petites notes en passant
 
-- Les mots de passe generes dans les workflows (`workEmail + "-Init1!"`) sont un
-  exemple simple -- remplacez par votre propre politique de mots de passe.
-- Ajoutez d'autres secteurs en creant simplement un nouveau fichier dans
-  `templates/groups/` et `templates/jobs/` avec le meme nom (ex: `industrie.json`).
+- Les mots de passe générés automatiquement (`workEmail + "-Init1!"`) sont juste un exemple simple pour que ça tourne — à remplacer par ta propre politique de mots de passe le moment venu
+- Pour ajouter un nouveau secteur, il suffit de créer un nouveau fichier dans `templates/groups/` et `templates/jobs/` avec le même nom (par exemple `industrie.json`)
+- Le fichier `.env` ne doit jamais être partagé ni pushé sur GitHub — c'est là que vivent les vrais mots de passe
